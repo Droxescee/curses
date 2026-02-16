@@ -9,7 +9,7 @@ import {
 } from "../../../utils";
 import TwitchChatApi from "./chat";
 import TwitchEmotesApi from "./emotes";
-const scope = ["chat:read", "chat:edit", "channel:read:subscriptions"];
+const scope = ["chat:read", "chat:edit", "channel:read:subscriptions", "channel:read:ads"];
 
 class Service_Twitch implements IServiceInterface {
   authProvider?: StaticAuthProvider;
@@ -19,15 +19,18 @@ class Service_Twitch implements IServiceInterface {
   chat!: TwitchChatApi;
 
   liveCheckInterval?: any = null;
+  adCheckInterval?: any = null;
 
   apiClient?: ApiClient;
 
   state = proxy<{
     user: HelixUser | null;
     liveStatus: ServiceNetworkState;
+    adState: ServiceNetworkState;
   }>({
     liveStatus: ServiceNetworkState.disconnected,
     user: null,
+    adState: ServiceNetworkState.disconnected,
   });
 
   get #state() {
@@ -43,19 +46,29 @@ class Service_Twitch implements IServiceInterface {
     // login with token
     this.connect();
 
-    subscribeKey(this.#state.data, "chatEnable", (value) => {
-      if (value) {
+    subscribeKey(this.#state.data, "chatEnable", (enabled) => {
+      if (enabled) {
         if (this.state.user && this.authProvider)
           this.chat.connect(this.state.user.name, this.authProvider);
       } else this.chat.disconnect();
     });
 
+    subscribeKey(this.#state.data, "chatPostAd", (enabled) => {
+      if (enabled) {
+        this.startAdPolling();
+      }
+
+      if (!enabled) {
+        this.stopAdPolling();
+      }
+    });
+
     serviceSubscibeToSource(this.#state.data, "chatPostSource", (data) => {
       if (
-        this.#state.data.chatPostLive &&
-        this.state.liveStatus !== ServiceNetworkState.connected
-      )
-        return;
+        (this.#state.data.chatPostLive && this.state.liveStatus !== ServiceNetworkState.connected) ||
+        (this.#state.data.chatPostAd && this.state.adState !== ServiceNetworkState.connected)
+      ) return;
+
       this.#state.data.chatPostEnable &&
         data?.value &&
         data?.type === TextEventType.final &&
@@ -64,10 +77,10 @@ class Service_Twitch implements IServiceInterface {
 
     serviceSubscibeToInput(this.#state.data, "chatPostInput", (data) => {
       if (
-        this.#state.data.chatPostLive &&
-        this.state.liveStatus !== ServiceNetworkState.connected
-      )
-        return;
+        (this.#state.data.chatPostLive && this.state.liveStatus !== ServiceNetworkState.connected) ||
+        (this.#state.data.chatPostAd && this.state.adState !== ServiceNetworkState.connected)
+      ) return;
+
       this.#state.data.chatPostEnable &&
         data?.textFieldType !== "twitchChat" &&
         data?.value &&
@@ -151,6 +164,44 @@ class Service_Twitch implements IServiceInterface {
     }
   }
 
+  async #checkAdStatus() {
+    if(!this.apiClient || !this.state.user) {
+      this.state.adState = ServiceNetworkState.disconnected
+      return;
+    }
+
+    try {
+      const resp = await this.apiClient?.channels.getAdSchedule(this.state.user.id);
+      const prevStatus = this.state.adState;
+
+      // AdStatus check
+      const isAdRunning = resp.duration > 0 && Date.now() < resp.lastAdDate.getTime() + resp.duration * 1000 + 5000;
+      this.state.adState = !!isAdRunning ? ServiceNetworkState.connected : ServiceNetworkState.disconnected;
+
+      if (prevStatus === ServiceNetworkState.connected && this.state.adState === ServiceNetworkState.disconnected) {
+        window.ApiShared.pubsub.publishLocally({ topic: "ad.on_ended" });
+      }
+
+    } catch (error) {
+      this.state.adState = ServiceNetworkState.disconnected
+    }
+  };
+
+  startAdPolling = () => {
+  if (!this.adCheckInterval) {
+      this.#checkAdStatus()
+      this.adCheckInterval = setInterval(() => this.#checkAdStatus(), 3000);
+    }
+  };
+
+  stopAdPolling = () => {
+    if (this.adCheckInterval) {
+      clearInterval(this.adCheckInterval);
+      this.adCheckInterval = undefined;
+      this.state.adState = ServiceNetworkState.disconnected;
+    }
+  };
+
   async connect() {
     try {
       if (!this.#state.data.token) return this.logout();
@@ -175,6 +226,11 @@ class Service_Twitch implements IServiceInterface {
 
       // initial live check
       this.#checkLive();
+
+      // initial polling startup
+      if (this.#state.data.chatPostAd) {
+        this.startAdPolling()
+      };
 
       this.emotes.loadEmotes(me.id, this.apiClient);
       if (this.#state.data.chatEnable)

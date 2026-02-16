@@ -43,14 +43,14 @@ export const Description: FC<PropsWithChildren>                        = ({child
 export const Content: FC<PropsWithChildren>                            = ({children}) => {
   return <div style={{width: '19rem'}} className="flex flex-col p-4 space-y-2">{children}</div>
 }
-export const Switchable: FC<PropsWithChildren<{ visible: boolean }>>   = ({visible, children}) => {
+export const Switchable: FC<PropsWithChildren<{ visible: boolean; marginTop?: number }>>   = ({visible, children, marginTop = 0.5}) => {
   return <AnimatePresence initial={false}>
     {visible && <motion.div
       key="switchable"
       initial={{marginTop: 0, height: 0, opacity: 0}}
       transition={{ease: "anticipate", duration: 0.3}}
       exit={{marginTop: 0, height: 0, opacity: 0}}
-      animate={{marginTop: ".5rem", height: "auto", opacity: 1}}
+      animate={{marginTop: `${marginTop}rem`, height: "auto", opacity: 1}}
       className="flex flex-col w-full space-y-2">
       <span></span>
       {children}

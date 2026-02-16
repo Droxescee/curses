@@ -25,10 +25,8 @@ const RecordingAlerts: FC = () => {
   const { postEnable: discordPostEnable, postWithTwitchLive: discordPostWithTwitchLive } = useSnapshot(
     window.ApiServer.state.services.discord.data
   );
-  const { chatPostEnable, chatEnable, chatPostLive } = useSnapshot(
-    window.ApiServer.state.services.twitch.data
-  );
-  const { liveStatus: twitchLiveStatus } = useSnapshot(window.ApiServer.twitch.state);
+  const { chatPostEnable, chatEnable, chatPostLive, chatPostAd } = useSnapshot(window.ApiServer.state.services.twitch.data);
+  const { liveStatus: twitchLiveStatus, adState: twitchAdState } = useSnapshot(window.ApiServer.twitch.state);
   const { connection: twitchChatStatus } = useSnapshot(window.ApiServer.twitch.chat.state);
 
   const handleStopTwitch = () => {
@@ -41,9 +39,8 @@ const RecordingAlerts: FC = () => {
     chatEnable &&
     chatPostEnable &&
     twitchChatStatus === ServiceNetworkState.connected &&
-    (chatPostLive ? twitchLiveStatus === ServiceNetworkState.connected : true);
-
-
+    (chatPostLive ? twitchLiveStatus === ServiceNetworkState.connected : true) &&
+    (chatPostAd ? twitchAdState === ServiceNetworkState.connected : true);
     
     const showDiscord = discordPostEnable && (discordPostWithTwitchLive ? twitchLiveStatus === ServiceNetworkState.connected : true)
   return (

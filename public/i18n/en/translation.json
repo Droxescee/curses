@@ -37,7 +37,9 @@
     "status_connecting": "Connecting",
     "status_error": "Error",
     "status_online": "Online",
-    "status_offline": "Offline"
+    "status_offline": "Offline",
+    "status_ads_rolling": "Ads running",
+    "status_no_ads_rolling": "No Ads running"
   },
   "main": {
     "btn_show_logs": "Show logs",
@@ -140,7 +142,7 @@
 
   "settings": {
     "title": "Settings",
-    "desc_1": "Made with 💖 by Mmp",
+    "desc_1": "Made with 💖 by Mmp & Droxe",
     "desc_2": "Join discord for updates and help!",
     "section_template": "Template",
     "section_link_apps": "Link apps",
@@ -184,11 +186,15 @@
     "btn_logout": "Logout",
     "btn_login": "Login",
     "status_stream": "Stream status",
+    "status_ads": "Ads status",
     "status_chat": "Chat connection",
     "field_enable_chat": "Enable chat",
     "field_post_in_chat": "Post in chat",
     "field_post_in_chat_desc": "Post speech to text or translation results in chat",
     "field_post_in_chat_live": "Post only when live streaming",
+    "field_post_in_chat_on_ad": "Post only when ads roll",
+    "field_ads_poll_time": "Ads poll time(ms)",
+    "field_ads_poll_time_desc": "0 disables polling; Recommended to set 3000–15000 ms (3–15s) if ads get triggered manually.",
     "field_post_in_chat_delay": "Send delay(ms)",
     "field_chat_text": "Use chat messages",
     "field_chat_text_desc": "Use your twitch chat messages as source for speech to text",
